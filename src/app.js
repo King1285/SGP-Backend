@@ -21,8 +21,8 @@ import userRouter from "./routes/user.routes.js";
 
 // routes Declaration
 app.use("/api/v1/users",userRouter)
-app.use("/",(req,res)=>{
-    res.send("hii how are you")
-})
+// app.use("/",(req,res)=>{
+//     res.send("hii how are you")
+// })
 
 export { app }
