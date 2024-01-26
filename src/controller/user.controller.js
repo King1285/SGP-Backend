@@ -243,7 +243,7 @@ const logoutUser = asyncHandler(async (req, res) => {
         httpOnly: true,
         secure: true
     }
-
+// console.log(hii)
     return res
         .status(200)
         .clearCookie("accessToken", options)
