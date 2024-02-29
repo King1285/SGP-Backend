@@ -38,6 +38,33 @@ const twoMinutesExpiry = async (otpTime) => {
     }
 }
 
+const fiveMinutesExpiryForgot = async (otpTime, email) => {
+    try {
+        const user = await User.findOne({ email });
+        if (!user) {
+            throw new ApiError(500, "user not found while otp expiry")
+        }
+        const c_time = new Date();
+        var timediffrence = (otpTime - c_time.getTime()) / 1000;
+        timediffrence /= 60
+
+        if (Math.abs(timediffrence) > 5) {
+            // const user = await User.findOneAndUpdate({ email: email },
+            //     {
+            //         $set: {
+            //             forgotPassword: true
+            //         }
+            //     });
+            return true;
+        }
+        return false;
+
+
+    } catch (error) {
+        throw new ApiError(500, "something went wrong during expiry time in forgot")
+    }
+}
+
 const fiveMinutesExpiry = async (otpTime) => {
     try {
         const c_time = new Date();
@@ -243,7 +270,7 @@ const logoutUser = asyncHandler(async (req, res) => {
         httpOnly: true,
         secure: true
     }
-// console.log(hii)
+    // console.log(hii)
     return res
         .status(200)
         .clearCookie("accessToken", options)
@@ -289,6 +316,127 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     }
 });
 
+const sendOtpforForgotPassword = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+        throw new ApiError(404, "user not found");
+    }
+    const genratedOtp = Math.floor(1000 + Math.random() * 9000);
+    // console.log(genratedOtp)
+    const oldOtpData = await Otp.findOne({ email: email })
+
+    if (oldOtpData) {
+
+        const sendnextOtp = await twoMinutesExpiry(oldOtpData.timestamp);
+        if (!sendnextOtp) {
+            throw new ApiError(401, "please try after some time")
+        }
+    }
+    const currentDate = new Date()
+
+    const otp = await Otp.findOneAndUpdate(
+        { email: email },
+        { otp: genratedOtp, timestamp: new Date(currentDate.getTime()) },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+    )
+    // const otp = await Otp.create({
+    //     email: email,
+    //     otp: genratedOtp
+    // })
+    if (!otp) {
+        throw new ApiError(500, "something went wrong")
+    }
+    const mailConfigurations = {
+
+        // It should be a string of sender/server email 
+        from: process.env.EMAIL,
+
+        to: email,
+
+        // Subject of Email 
+        subject: 'Email Verification',
+
+        // This would be the text of email body 
+        text: ` Hii ,this is otp for verification ${genratedOtp}`
+
+    };
+
+    transporter.sendMail(mailConfigurations, function (error, info) {
+        if (error) {
+            console.error(error)
+        }
+        console.log('Email Sent Successfully');
+        console.log(info);
+    });
+    // const msg = '<p> Hii ,</br>this is otp for verification <b><h4>' + genratedOtp + '</h4></b></p>'
+    // transporter.sendMail(email, 'Otp Verification', msg)
+    return res.status(200).json(new ApiResponse(200, otp, "OTP sent successfully"))
+
+
+})
+
+const verifyOtpForForgotPassword = asyncHandler(async (req, res) => {
+    const { email, otp } = req.body;
+    const otpData = await Otp.findOne({ email, otp });
+    if (!otpData) {
+        throw new ApiError(401, "invalid otp")
+    }
+    const isOtpExpires = fiveMinutesExpiry(otpData.timestamp)
+    if (!isOtpExpires) {
+        throw new ApiError(401, "Your Otp is Expires");
+    }
+    const user = await User.findOneAndUpdate({ email: email },
+        {
+            $set: {
+                forgotPassword: true
+            }
+        }).select("-password -refreshToken");
+
+    return res.status(200).json(new ApiResponse(200, user, "Account Verified Successfully "))
+})
+
+const forgotPassword = asyncHandler(async (req, res) => {
+    const { email, newPassword, confirmPassword } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+        throw new ApiError(404, "user not found");
+    }
+    // const verify = await user.verifyPassword
+    // if (!verify) {
+    //     throw new ApiError(401, "Verification Failed");
+    // }
+    const verify = await user.forgotPassword
+    if (!verify) {
+        throw new ApiError(401, "Verification Failed");
+    }
+    if (newPassword !== confirmPassword) {
+        throw new ApiError(401, "Passwords do not match");
+    }
+    user.password = newPassword;
+    await user.save({ validateBeforeSave: false })
+    const ruser = await User.findOne({ email }).select("-password -refreshToken")
+
+    return res.status(200).json(new ApiResponse(200, ruser, "Password updated successfully"))
+})
+
+const changePassword = asyncHandler(async (req, res) => {
+    const { oldPassword, newPassword } = req.body
+
+    const user = await User.findById(req.user?._id)
+
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+
+    if (!isPasswordCorrect) {
+        throw new ApiError(400, "Invalid password")
+    }
+    user.password = newPassword
+    await user.save({ validateBeforeSave: false })
+
+    return res.status(200).json(new ApiResponse(200, {}, "Password updated successfully"))
+
+})
 
 
 export {
@@ -297,8 +445,11 @@ export {
     sendOtp,
     verifyOtp,
     logoutUser,
-    refreshAccessToken
-
+    refreshAccessToken,
+    sendOtpforForgotPassword,
+    verifyOtpForForgotPassword,
+    forgotPassword,
+    changePassword
 }
 
 
