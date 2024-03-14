@@ -416,7 +416,14 @@ const forgotPassword = asyncHandler(async (req, res) => {
     }
     user.password = newPassword;
     await user.save({ validateBeforeSave: false })
-    const ruser = await User.findOne({ email }).select("-password -refreshToken")
+    // user.forgotPassword = false
+    // console.log(user)
+    const ruser = await User.findOneAndUpdate({ email },
+        {
+            $set: {
+                forgotPassword: false
+            }
+        }).select("-password -refreshToken")
 
     return res.status(200).json(new ApiResponse(200, ruser, "Password updated successfully"))
 })
