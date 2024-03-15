@@ -146,6 +146,10 @@ const loginUser = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Please fill all the fields");
     }
     const user = await User.findOne({ email });
+    const isverified = user.isVerified
+    if (!isverified) {
+        throw new ApiError(401, "please verify your email")
+    }
 
     if (!user) {
         throw new ApiError(404, "user not found");
