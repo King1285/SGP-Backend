@@ -11,7 +11,7 @@ import asyncHandler from 'express-async-handler';
 
 
 const information = asyncHandler(async (req, res) => {
-    const { phone, persnoal_email, tech, linkedin, github } = req.body;
+    const { carrear_option,phone, persnoal_email, tech, linkedin, github } = req.body;
     const user = await User.findById(
         req.user._id,
         {
@@ -46,6 +46,7 @@ const information = asyncHandler(async (req, res) => {
     const user_info = await Info.create({
         user: user._id,
         avatar: avatar.url,
+        carrear_option,
         phone,
         persnoal_email,
         tech,

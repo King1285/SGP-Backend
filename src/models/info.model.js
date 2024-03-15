@@ -11,6 +11,10 @@ const infoSchema = new Schema({
         type: String,
         required: true
     },
+    carrear_option:{
+        type: String,
+        required: true
+    },
     phone: {
         type: String,
         required: true
