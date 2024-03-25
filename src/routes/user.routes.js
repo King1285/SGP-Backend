@@ -2,7 +2,9 @@ import { Router } from "express";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { changePassword, forgotPassword, loginUser, logoutUser, refreshAccessToken, registerUser, sendOtp, sendOtpforForgotPassword, verifyOtp, verifyOtpForForgotPassword } from "../controller/user.controller.js";
 import { information } from "../controller/info.controller.js"
+import { addSkill } from "../controller/skill.controller.js";
 import { upload } from "../middleware/multer.middleware.js";
+import { addProject } from "../controller/project.controller.js";
 
 
 const router = Router();
@@ -25,8 +27,10 @@ router.route("/add-info").post(verifyJWT,
             name: "avatar",
             maxCount: 1
         }]),
-        information
+    information
 )
+router.route("/add-skill").post(verifyJWT, addSkill)
+router.route("/add-project").post(verifyJWT, addProject)
 
 
 
